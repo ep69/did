@@ -1,0 +1,11 @@
+[general]
+user = szidek
+email = szidek@redhat.com
+width = 79
+grades = 1
+
+[BASEQESEC]
+type = jira
+prefix = BASEQESEC
+project = BASEQESEC
+url = https://projects.engineering.redhat.com

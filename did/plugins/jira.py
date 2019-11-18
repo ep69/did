@@ -27,7 +27,7 @@ Notes:
 * Optional parameter ``ssl_verify`` can be used to enable/disable
   SSL verification (default: true)
 * ``auth_url`` parameter is optional. If not provided,
-  ``url + "/step-auth-gss"`` will be used for authentication.
+  ``url + "/rest/auth/1/session"`` will be used for authentication.
 * ``auth_type`` parameter is optional, default value is 'gss'.
 * ``auth_username`` and ``auth_password`` are only valid for
   basic authentication.
@@ -38,7 +38,7 @@ import requests
 import urllib.parse
 import dateutil.parser
 import distutils.util
-from requests_gssapi import HTTPSPNEGOAuth, DISABLED
+from requests_kerberos import HTTPKerberosAuth, DISABLED
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 from did.utils import log, pretty, listed
@@ -192,7 +192,7 @@ class JiraStats(StatsGroup):
         if "auth_url" in config:
             self.auth_url = config["auth_url"]
         else:
-            self.auth_url = self.url + "/step-auth-gss"
+            self.auth_url = self.url + "/rest/auth/1/session"
         # Authentication type
         if "auth_type" in config:
             if config["auth_type"] not in AUTH_TYPES:
@@ -260,6 +260,7 @@ class JiraStats(StatsGroup):
         if self._session is None:
             self._session = requests.Session()
             log.debug("Connecting to {0}".format(self.auth_url))
+            log.debug("Authenticating, auth type '{0}', auth url '{1}'".format(self.auth_type, self.auth_url))
             # Disable SSL warning when ssl_verify is False
             if not self.ssl_verify:
                 requests.packages.urllib3.disable_warnings(
@@ -269,9 +270,13 @@ class JiraStats(StatsGroup):
                 response = self._session.get(
                     self.auth_url, auth=basic_auth, verify=self.ssl_verify)
             else:
-                gssapi_auth = HTTPSPNEGOAuth(mutual_authentication=DISABLED)
-                response = self._session.get(
-                    self.auth_url, auth=gssapi_auth, verify=self.ssl_verify)
+                log.debug("Let's Kerberos")
+                krb_auth = HTTPKerberosAuth(mutual_authentication=DISABLED)
+                #response = self._session.get(
+                #    self.auth_url, auth=krb_auth, verify=self.ssl_verify)
+                #response = self._session.get(self.auth_url, auth=krb_auth)
+                response = requests.get(self.auth_url, auth=krb_auth)
+                log.debug("jira reply status text: {0}".format(response.text))
             try:
                 response.raise_for_status()
             except requests.exceptions.HTTPError as error:
